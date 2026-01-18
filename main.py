@@ -62,3 +62,4 @@ if option:
 
 else:
     st.info("Välj en kommun i listan ovan för أن تبدأ البحث.")
+
