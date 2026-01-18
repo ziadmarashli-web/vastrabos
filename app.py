@@ -11,11 +11,11 @@ st.markdown("""
     .card { background-color: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
     .section-header { color: #1E3A8A; font-weight: bold; border-bottom: 2px solid #f3f4f6; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; }
     </style>
-    """, unsafe_allow_config=True)
+    """, unsafe_allow_html=True)
 
 # العنوان الرئيسي
-st.markdown('<p class="main-title">🏠 Västrabo</p>', unsafe_allow_config=True)
-st.markdown('<p class="sub-title">Enheten för mottagande och integration i Lerums kommun<br>Hitta din framtida bostad i Västra Götaland</p>', unsafe_allow_config=True)
+st.markdown('<p class="main-title">🏠 Västrabo</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Enheten för mottagande och integration i Lerums kommun<br>Hitta din framtida bostad i Västra Götaland</p>', unsafe_allow_html=True)
 
 # قاعدة بيانات البلديات (قائمة شاملة)
 kommuner = {
@@ -77,8 +77,8 @@ if option:
     data = kommuner[option]
     
     # بطاقة معلومات السكن
-    st.markdown(f'<div class="card">', unsafe_allow_complete=True)
-    st.markdown(f'<div class="section-header">🏢 Bostadsinformation: {option}</div>', unsafe_allow_config=True)
+    st.markdown(f'<div class="card">', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-header">🏢 Bostadsinformation: {option}</div>', unsafe_allow_html=True)
     st.write(f"**Kommunalt bostadsbolag:** {data['bolag']}")
     st.info(f"Tips: Kom ihåg att registrera dig i {option}s bostadskö så tidigt som möjligt.")
     
@@ -91,8 +91,8 @@ if option:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # بطاقة التنقل
-    st.markdown(f'<div class="card">', unsafe_allow_complete=True)
-    st.markdown(f'<div class="section-header">🚆 Pendling till Göteborg C</div>', unsafe_allow_config=True)
+    st.markdown(f'<div class="card">', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-header">🚆 Pendling till Göteborg C</div>', unsafe_allow_html=True)
     st.write(f"📍 **Distans:** {data['dist']}")
     st.write(f"🕒 **Ungefärlig restid:** {data['tid']}")
     
@@ -105,4 +105,5 @@ else:
 
 # تذييل الصفحة
 st.markdown("---")
+
 st.caption("© 2024 Västrabo - Ett stödverktyg för nyanlända i Västra Götaland")
