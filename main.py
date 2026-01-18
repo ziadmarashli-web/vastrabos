@@ -1,23 +1,25 @@
 import streamlit as st
 
-# Inställningar
+# Setup page
 st.set_page_config(page_title="Västrabo", page_icon="🏠", layout="centered")
 
-# Design (CSS)
+# Custom CSS for beauty and font size
 st.markdown("""
     <style>
-    .main-title { font-size: 42px; color: #1E3A8A; font-weight: bold; text-align: center; margin-bottom: 5px; }
-    .sub-title { font-size: 18px; color: #4B5563; text-align: center; margin-bottom: 30px; line-height: 1.4; }
-    .card { background-color: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .section-header { color: #1E3A8A; font-weight: bold; border-bottom: 2px solid #f3f4f6; padding-bottom: 8px; margin-bottom: 12px; }
+    .app-title { font-size: 60px !important; color: #1E3A8A; font-weight: 800; text-align: center; margin-bottom: 0px; }
+    .app-subtitle { font-size: 20px !important; color: #4B5563; text-align: center; margin-bottom: 40px; }
+    .card { background-color: #ffffff; padding: 25px; border-radius: 15px; border: 1px solid #e5e7eb; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-bottom: 25px; }
+    .section-header { color: #1E3A8A; font-size: 22px; font-weight: bold; border-bottom: 3px solid #f3f4f6; padding-bottom: 10px; margin-bottom: 20px; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #f8fafc; border: 1px solid #e2e8f0; }
+    .stButton>button:hover { border-color: #1E3A8A; color: #1E3A8A; }
     </style>
     """, unsafe_allow_html=True)
 
-# Rubrik
-st.markdown('<p class="main-title">🏠 Västrabo</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Enheten för mottagande och integration i Lerums kommun<br>Hitta din framtida bostad i Västra Götaland</p>', unsafe_allow_html=True)
+# Header
+st.markdown('<p class="app-title">Västrabo</p>', unsafe_allow_html=True)
+st.markdown('<p class="app-subtitle">Enheten för mottagande och integration i Lerums kommun</p>', unsafe_allow_html=True)
 
-# Databas för alla 49 kommuner
+# Database
 kommuner = {
     "Ale": {"bolag": "Alebyggen", "web": "https://www.alebyggen.se", "dist": "25 km", "tid": "20 min"},
     "Alingsås": {"bolag": "Alingsåshem", "web": "https://www.alingsashem.se", "dist": "45 km", "tid": "40 min"},
@@ -66,44 +68,56 @@ kommuner = {
     "Vara": {"bolag": "Varabostäder", "web": "https://www.varabostader.se", "dist": "100 km", "tid": "1h 15 min"},
     "Vårgårda": {"bolag": "Vårgårda Bostäder", "web": "https://www.vargardabostader.se", "dist": "65 km", "tid": "45 min"},
     "Vänersborg": {"bolag": "Vänersborgsbostäder", "web": "https://www.vanersborgsbostader.se", "dist": "85 km", "tid": "55 min"},
-    "Åmål": {"bolag": "Åmåls Kommunfastigheter", "web": "https://www.amalskommunfastigheter.se", "dist": "175 km", "tid": "1h 40 min"},
+    "Åمål": {"bolag": "Åmåls Kommunfastigheter", "web": "https://www.amalskommunfastigheter.se", "dist": "175 km", "tid": "1h 40 min"},
     "Öckerö": {"bolag": "Öckerö Bostads AB", "web": "https://www.ockerobostad.se", "dist": "25 km", "tid": "50 min"}
 }
 
-# Sök och rensa
-col1, col2 = st.columns([4, 1])
-with col1:
-    val = st.selectbox("Sök efter kommun:", [""] + sorted(list(kommuner.keys())))
-with col2:
+# Session State for reset
+if 'kommun' not in st.session_state:
+    st.session_state.kommun = ""
+
+col_input, col_btn = st.columns([4, 1])
+
+with col_input:
+    selected = st.selectbox("Välj en kommun i listan:", [""] + sorted(list(kommuner.keys())), key="main_select")
+
+with col_btn:
     st.write(" ")
     st.write(" ")
     if st.button("Rensa 🔄"):
+        st.session_state.main_select = ""
         st.rerun()
 
-if val:
-    res = kommuner[val]
-    # Bostadsinfo
-    st.markdown(f'<div class="card">', unsafe_allow_html=True)
-    st.markdown(f'<div class="section-header">🏢 Bostad: {val}</div>', unsafe_allow_html=True)
-    st.write(f"**Kommunalt bolag:** {res['bolag']}")
-    st.link_button(f"Gå till {res['bolag']} ↗️", res['web'])
+if selected:
+    data = kommuner[selected]
+    
+    # 🏢 Card 1: Bostad
+    st.markdown(f'<div class="card"><div class="section-header">🏢 Bostad: {selected}</div>', unsafe_allow_html=True)
+    st.write(f"**Kommunalt bolag:** {data['bolag']}")
+    st.link_button(f"Gå till {data['bolag']} officiella hemsida ↗️", data['web'])
     
     st.write("---")
-    st.write("**Sök lediga lägenheter:**")
+    st.write("**Sök lediga lägenheter direkt på portalerna:**")
     c1, c2, c3 = st.columns(3)
-    c1.link_button("HomeQ", f"https://www.homeq.se/search?q={val}")
-    c2.link_button("Boplats", f"https://nya.boplats.se/sok?searchgridquery={val}")
-    q_url = val.lower().replace('å','a').replace('ä','a').replace('ö','o')
-    c3.link_button("Qasa", f"https://qasa.se/p2/sv/find-home/sweden/{q_url}-kommun")
+    
+    # Corrected Search Links
+    c1.link_button("HomeQ", f"https://www.homeq.se/search?q={selected}")
+    c2.link_button("Boplats", f"https://nya.boplats.se/sok?searchgridquery={selected}")
+    
+    # Fix for Qasa (Lower case, no special chars)
+    q_url = selected.lower().replace('å','a').replace('ä','a').replace('ö','o')
+    c3.link_button("Qasa", f"https://qasa.se/p2/sv/find-home/sweden/{q_url}-kommun/lagenhet")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Pendling
-    st.markdown(f'<div class="card">', unsafe_allow_html=True)
-    st.markdown(f'<div class="section-header">🚆 Pendling till Göteborg C</div>', unsafe_allow_html=True)
-    st.write(f"📍 **Distans:** {res['dist']} | 🕒 **Tid:** {res['tid']}")
-    st.link_button("Visa karta & vägbeskrivning 🗺️", f"https://www.google.com/maps/dir/{val},+Sweden/Gothenburg+Central+Station")
+    # 🚆 Card 2: Pendling
+    st.markdown(f'<div class="card"><div class="section-header">🚆 Pendling till Göteborg C</div>', unsafe_allow_html=True)
+    st.write(f"📍 **Distans:** {data['dist']} | 🕒 **Restid:** {data['tid']}")
+    st.link_button("Visa vägbeskrivning på Google Maps 🗺️", f"https://www.google.com/maps/dir/?api=1&origin={selected},+Sweden&destination=Gothenburg+Central+Station")
     st.markdown('</div>', unsafe_allow_html=True)
+
 else:
-    st.info("Välj en kommun för att se hyresvärdar och pendlingsinfo.")
+    st.info("Välkommen! Välj en kommun för att se hyresvärdar, lediga annonser och pendlingsinfo.")
 
-st.caption("© 2026 Västrabo - Lerums kommun")
+# Footer
+st.markdown("---")
+st.caption("© 2026 Västrabo | Enheten för mottagande och integration i Lerums kommun")
