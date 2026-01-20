@@ -1,32 +1,23 @@
 import streamlit as st
 import pandas as pd
 import urllib.parse as up
-import re
 
 # 1) Konfiguration
 st.set_page_config(page_title="Västrabo", page_icon="🏠", layout="centered")
 
-# Hjälpfunktion: säkra länkar även om Streamlit-versionen saknar link_button
+# ---------- Hjälpfunktion: robust länkknapp ----------
 def link(container, label: str, url: str):
+    # För nya Streamlit
     if hasattr(container, "link_button"):
         container.link_button(label, url)
     else:
+        # Fallback för äldre Streamlit
         container.markdown(f"[{label}]({url})")
 
-# Hjälpfunktioner för URL:er
 def url_q(text: str) -> str:
-    # URL-encodar å/ä/ö, mellanslag m.m.
     return up.quote(text, safe="")
 
-def qasa_slug(city: str) -> str:
-    # Gör en stabil "slug" för Qasa: å/ä/ö -> a/a/o, mellanslag -> bindestreck
-    s = city.strip().lower()
-    s = s.replace("å", "a").replace("ä", "a").replace("ö", "o")
-    s = s.replace(" ", "-")
-    s = re.sub(r"[^a-z0-9\-]", "", s)
-    return s
-
-# Anpassad CSS
+# ---------- CSS ----------
 st.markdown(
     """
     <style>
@@ -41,12 +32,9 @@ st.markdown(
 
 # 2) Rubrik
 st.markdown('<p class="app-title">Västrabo</p>', unsafe_allow_html=True)
-st.markdown(
-    '<p class="app-subtitle">Enheten för mottagande och integration i Lerums kommun</p>',
-    unsafe_allow_html=True
-)
+st.markdown('<p class="app-subtitle">Enheten för mottagande och integration i Lerums kommun</p>', unsafe_allow_html=True)
 
-# 3) Databas: 49 kommuner i Västra Götaland
+# 3) Kommuner (din databas)
 kommuner = {
     "Ale": {"bolag": "Alebyggen", "web": "https://www.alebyggen.se", "lat": 57.92, "lon": 12.08, "dist": "25 km"},
     "Alingsås": {"bolag": "Alingsåshem", "web": "https://www.alingsashem.se", "lat": 57.93, "lon": 12.53, "dist": "45 km"},
@@ -96,11 +84,14 @@ kommuner = {
     "Vårgårda": {"bolag": "Vårgårda Bostäder", "web": "https://www.vargardabostader.se", "lat": 58.03, "lon": 12.80, "dist": "65 km"},
     "Vänersborg": {"bolag": "Vänersborgsbostäder", "web": "https://www.vanersborgsbostader.se", "lat": 58.37, "lon": 12.32, "dist": "85 km"},
     "Åmål": {"bolag": "Åmåls Kommunfastigheter", "web": "https://www.amalskommunfastigheter.se", "lat": 59.05, "lon": 12.70, "dist": "175 km"},
-    "Öckerö": {"bolag": "Öckerö Bostads AB", "web": "https://www.ockerobostad.se", "lat": 57.71, "lon": 11.64, "dist": "25 km"}
+    "Öckerö": {"bolag": "Öckerö Bostads AB", "web": "https://www.ockerobostad.se", "lat": 57.71, "lon": 11.64, "dist": "25 km"},
 }
 
-# 4) Sök + Rensa (robust utan index=None)
+# 4) State + Rensa (RÄTT sätt: callback)
 if "city_selector" not in st.session_state:
+    st.session_state.city_selector = ""
+
+def reset_city():
     st.session_state.city_selector = ""
 
 col_sel, col_btn = st.columns([4, 1])
@@ -112,52 +103,46 @@ with col_sel:
 with col_btn:
     st.write(" ")
     st.write(" ")
-    if st.button("Rensa 🔄"):
-        st.session_state.city_selector = ""
-        st.rerun()
+    st.button("Rensa 🔄", on_click=reset_city)
 
-# 5) Resultat
+# 5) Presentation
 if selected_city:
     d = kommuner[selected_city]
 
-    # Bostadskort
-    st.markdown(
-        f'<div class="card"><div class="section-header">🏢 {selected_city} - Bostad</div>',
-        unsafe_allow_html=True
-    )
+    # Kort: Bostad
+    st.markdown(f'<div class="card"><div class="section-header">🏢 {selected_city} - Bostad</div>', unsafe_allow_html=True)
     st.write(f"Kommunalt bostadsbolag: **{d['bolag']}**")
     link(st, f"Besök {d['bolag']} officiella hemsida ↗️", d["web"])
 
     st.write("---")
     st.write("**Sök lediga annonser direkt på portalerna:**")
-
     c1, c2, c3 = st.columns(3)
 
-    city_param = url_q(selected_city)
-    link(c1, "HomeQ", f"https://www.homeq.se/search?q={city_param}")
-    link(c2, "Boplats", f"https://nya.boplats.se/sok?searchgridquery={city_param}")
+    # HomeQ (rätt URL)
+    # https://www.homeq.se/search?query=Göteborg
+    link(c1, "HomeQ", f"https://www.homeq.se/search?query={url_q(selected_city)}")
 
-    q_slug = qasa_slug(selected_city)
-    link(c3, "Qasa", f"https://qasa.se/p2/sv/find-home/sweden/{q_slug}-kommun")
+    # Boplats (stabil länk – filtrera område på sidan)
+    # https://boplats.se/sok
+    link(c2, "Boplats", "https://boplats.se/sok?types=1hand")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Qasa (rätt URL med searchAreas)
+    # https://qasa.com/se/sv/find-home?searchAreas=Göteborg~~se
+    link(c3, "Qasa", f"https://qasa.com/se/sv/find-home?searchAreas={url_q(selected_city)}~~se")
 
-    # Karta & Pendling
-    st.markdown(
-        '<div class="card"><div class="section-header">📍 Karta & Läge</div>',
-        unsafe_allow_html=True
-    )
+    st.caption("Tips: På Boplats väljer du område/kommun i filtren på sidan.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Kort: Karta & Läge
+    st.markdown('<div class="card"><div class="section-header">📍 Karta & Läge</div>', unsafe_allow_html=True)
     st.write(f"Avstånd till Göteborg C: **{d['dist']}**")
 
     map_df = pd.DataFrame({"lat": [d["lat"]], "lon": [d["lon"]]})
     st.map(map_df, zoom=9)
 
     dest = up.quote_plus(f"{selected_city} Station")
-    link(st, "Visa vägbeskrivning på Google Maps 🗺️",
-         f"https://www.google.com/maps/dir/?api=1&destination={dest}")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
+    link(st, "Visa vägbeskrivning på Google Maps 🗺️", f"https://www.google.com/maps/dir/?api=1&destination={dest}")
+    st.markdown('</div>', unsafe_allow_html=True)
 else:
     st.info("Välj en kommun för att se hyresvärdar, lediga annonser och pendlingsinformation.")
 
