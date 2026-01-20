@@ -1,24 +1,52 @@
 import streamlit as st
 import pandas as pd
+import urllib.parse as up
+import re
 
-# 1. Konfiguration och sidinställningar
+# 1) Konfiguration
 st.set_page_config(page_title="Västrabo", page_icon="🏠", layout="centered")
 
-# Anpassad CSS för design och typsnitt
-st.markdown("""
+# Hjälpfunktion: säkra länkar även om Streamlit-versionen saknar link_button
+def link(container, label: str, url: str):
+    if hasattr(container, "link_button"):
+        container.link_button(label, url)
+    else:
+        container.markdown(f"[{label}]({url})")
+
+# Hjälpfunktioner för URL:er
+def url_q(text: str) -> str:
+    # URL-encodar å/ä/ö, mellanslag m.m.
+    return up.quote(text, safe="")
+
+def qasa_slug(city: str) -> str:
+    # Gör en stabil "slug" för Qasa: å/ä/ö -> a/a/o, mellanslag -> bindestreck
+    s = city.strip().lower()
+    s = s.replace("å", "a").replace("ä", "a").replace("ö", "o")
+    s = s.replace(" ", "-")
+    s = re.sub(r"[^a-z0-9\-]", "", s)
+    return s
+
+# Anpassad CSS
+st.markdown(
+    """
     <style>
     .app-title { font-size: 70px !important; color: #1E3A8A; font-weight: 900; text-align: center; margin: 0; padding: 0; }
     .app-subtitle { font-size: 20px !important; color: #4B5563; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
     .card { background-color: #ffffff; padding: 25px; border-radius: 15px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
     .section-header { color: #1E3A8A; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-# 2. Appens rubrik
+# 2) Rubrik
 st.markdown('<p class="app-title">Västrabo</p>', unsafe_allow_html=True)
-st.markdown('<p class="app-subtitle">Enheten för mottagande och integration i Lerums kommun</p>', unsafe_allow_html=True)
+st.markdown(
+    '<p class="app-subtitle">Enheten för mottagande och integration i Lerums kommun</p>',
+    unsafe_allow_html=True
+)
 
-# 3. Komplett databas för samtliga 49 kommuner i Västra Götaland
+# 3) Databas: 49 kommuner i Västra Götaland
 kommuner = {
     "Ale": {"bolag": "Alebyggen", "web": "https://www.alebyggen.se", "lat": 57.92, "lon": 12.08, "dist": "25 km"},
     "Alingsås": {"bolag": "Alingsåshem", "web": "https://www.alingsashem.se", "lat": 57.93, "lon": 12.53, "dist": "45 km"},
@@ -71,61 +99,65 @@ kommuner = {
     "Öckerö": {"bolag": "Öckerö Bostads AB", "web": "https://www.ockerobostad.se", "lat": 57.71, "lon": 11.64, "dist": "25 km"}
 }
 
-# 4. Sök- och rensningslogik (Session State)
-if 'reset' not in st.session_state:
-    st.session_state.reset = False
+# 4) Sök + Rensa (robust utan index=None)
+if "city_selector" not in st.session_state:
+    st.session_state.city_selector = ""
 
 col_sel, col_btn = st.columns([4, 1])
 
 with col_sel:
-    selected_city = st.selectbox(
-        "Välj kommun:", 
-        [""] + sorted(list(kommuner.keys())), 
-        index=0 if st.session_state.reset else None,
-        key="city_selector"
-    )
-    if st.session_state.reset:
-        st.session_state.reset = False
+    options = [""] + sorted(kommuner.keys())
+    selected_city = st.selectbox("Välj kommun:", options, key="city_selector")
 
 with col_btn:
     st.write(" ")
     st.write(" ")
     if st.button("Rensa 🔄"):
-        st.session_state.reset = True
+        st.session_state.city_selector = ""
         st.rerun()
 
-# 5. Presentation av resultat
-if selected_city and selected_city != "":
+# 5) Resultat
+if selected_city:
     d = kommuner[selected_city]
-    
+
     # Bostadskort
-    st.markdown(f'<div class="card"><div class="section-header">🏢 {selected_city} - Bostad</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="card"><div class="section-header">🏢 {selected_city} - Bostad</div>',
+        unsafe_allow_html=True
+    )
     st.write(f"Kommunalt bostadsbolag: **{d['bolag']}**")
-    st.link_button(f"Besök {d['bolag']} officiella hemsida ↗️", d['web'])
-    
+    link(st, f"Besök {d['bolag']} officiella hemsida ↗️", d["web"])
+
     st.write("---")
     st.write("**Sök lediga annonser direkt på portalerna:**")
-    c1, c2, c3 = st.columns(3)
-    
-    # Dynamiska sök-länkar
-    c1.link_button("HomeQ", f"https://www.homeq.se/search?q={selected_city}")
-    c2.link_button("Boplats", f"https://nya.boplats.se/sok?searchgridquery={selected_city}")
-    
-    # Fix för Qasa-länkar (hanterar å, ä, ö)
-    q_url = selected_city.lower().replace('å','a').replace('ä','a').replace('ö','o')
-    c3.link_button("Qasa", f"https://qasa.se/p2/sv/find-home/sweden/{q_url}-kommun")
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    # Karta och Pendling
-    st.markdown(f'<div class="card"><div class="section-header">📍 Karta & Läge</div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+
+    city_param = url_q(selected_city)
+    link(c1, "HomeQ", f"https://www.homeq.se/search?q={city_param}")
+    link(c2, "Boplats", f"https://nya.boplats.se/sok?searchgridquery={city_param}")
+
+    q_slug = qasa_slug(selected_city)
+    link(c3, "Qasa", f"https://qasa.se/p2/sv/find-home/sweden/{q_slug}-kommun")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Karta & Pendling
+    st.markdown(
+        '<div class="card"><div class="section-header">📍 Karta & Läge</div>',
+        unsafe_allow_html=True
+    )
     st.write(f"Avstånd till Göteborg C: **{d['dist']}**")
-    
-    # Interaktiv karta
-    map_df = pd.DataFrame({'lat': [d['lat']], 'lon': [d['lon']]})
+
+    map_df = pd.DataFrame({"lat": [d["lat"]], "lon": [d["lon"]]})
     st.map(map_df, zoom=9)
-    
-    st.link_button("Visa vägbeskrivning på Google Maps 🗺️", f"https://www.google.com/maps/dir/?api=1&destination={selected_city}+Station")
-    st.markdown('</div>', unsafe_allow_html=True)
+
+    dest = up.quote_plus(f"{selected_city} Station")
+    link(st, "Visa vägbeskrivning på Google Maps 🗺️",
+         f"https://www.google.com/maps/dir/?api=1&destination={dest}")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
 else:
     st.info("Välj en kommun för att se hyresvärdar, lediga annonser och pendlingsinformation.")
 
