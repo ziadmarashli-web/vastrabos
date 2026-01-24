@@ -6,7 +6,7 @@ import pandas as pd
 # ----------------------------
 # 1) Sidinställningar
 # ----------------------------
-st.set_page_config(page_title="Västrabo", page_icon="🏠", layout="centered")
+st.set_page_config(page_title="Söka bostad i Västra Götland", page_icon="🏠", layout="centered")
 
 st.markdown(
     """
@@ -223,3 +223,4 @@ else:
 # Sidfot
 st.markdown("---")
 st.caption("© 2026 Västrabo | Enheten för mottagande och integration i Lerums kommun")
+
