@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ----------------------------
-# 1A) DÖLJ TOPPRADEN (Share/GitHub/meny)
+# 1A) Dölj toppraden (Share/GitHub/meny) i hosting-miljöer
 # ----------------------------
 st.markdown(
     """
@@ -31,41 +31,44 @@ st.markdown(
 )
 
 # ----------------------------
-# 1B) Design
+# 1B) Enkel styling
 # ----------------------------
 st.markdown(
     """
     <style>
-    .app-title { font-size: 70px !important; color: #1E3A8A; font-weight: 900; text-align: center; margin: 0; padding: 0; }
-    .app-subtitle { font-size: 20px !important; color: #4B5563; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
-    .card { background-color: #ffffff; padding: 25px; border-radius: 15px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
-    .section-header { color: #1E3A8A; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
+    .app-title { font-size: 64px !important; color: #1E3A8A; font-weight: 900; text-align: center; margin: 0; padding: 0; }
+    .app-subtitle { font-size: 18px !important; color: #4B5563; text-align: center; margin-bottom: 18px; }
+    .divider-line { border-bottom: 2px solid #eee; margin: 0 0 18px 0; }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-st.markdown('<p class="app-title">Söka bostad i Västra Götaland</p>', unsafe_allow_html=True)
-st.markdown(
-    '<p class="app-subtitle">Enheten för mottagande och integration i Lerums kommun</p>',
-    unsafe_allow_html=True
-)
+st.markdown('<div class="app-title">Söka bostad i Västra Götaland</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-subtitle">Enheten för mottagande och integration i Lerums kommun</div>', unsafe_allow_html=True)
+st.markdown('<div class="divider-line"></div>', unsafe_allow_html=True)
 
 # ----------------------------
-# 2) Hjälpfunktioner
+# 2) Robust hjälpfunktioner
 # ----------------------------
 def link_btn(label: str, url: str) -> None:
-    """Robust länkknapp: använder st.link_button om möjligt, annars markdown."""
+    """Robust länkknapp: använder st.link_button om möjligt, annars markdown-länk."""
     try:
-        st.link_button(label, url)
+        st.link_button(label, url, use_container_width=True)
     except Exception:
         st.markdown(f"👉 [{label}]({url})")
 
 def map_safe(df: pd.DataFrame, zoom: int = 9) -> None:
+    """Robust karta: zoom om det stöds av din Streamlit-version."""
     try:
         st.map(df, zoom=zoom)
     except TypeError:
         st.map(df)
+
+def google_hyresvardar_url(kommun: str) -> str:
+    """Google-sökning för hyresvärdar i vald kommun."""
+    q = urllib.parse.quote_plus(f"hyresvärdar {kommun} bostad")
+    return f"https://www.google.com/search?q={q}"
 
 VOWELS = set("aeiouyåäö")
 
@@ -113,149 +116,133 @@ BOPLATS_KOMMUNER = {
     "Lerum","Mölndal","Partille","Skara","Stenungsund","Strömstad","Trollhättan","Uddevalla","Öckerö"
 }
 
-# Förbo – stabila länkar
 FOERBO_INFO_URL = "https://www.foerbo.se/"
 FOERBO_LEDIG_URL = "https://minasidor.foerbo.se/market/residential"
 
-# Qasa-text (som du bad om)
-QASA_INFO_TEXT = [
-    "Qasa är en seriös tjänst.",
-    "Använd gärna Qasa, men följ alltid säkerhetsråden:",
-    "• Betala inte pengar innan du har sett bostaden och fått tydligt avtal.",
-    "• Håll kommunikationen i plattformen när det går.",
+QASA_INFO_TEXT = (
+    "Qasa är en seriös tjänst.\n\n"
+    "Använd gärna Qasa, men följ alltid säkerhetsråden:\n\n"
+    "• Betala inte pengar innan du har sett bostaden och fått tydligt avtal.\n"
+    "• Håll kommunikationen i plattformen när det går.\n"
     "• Var försiktig om någon vill flytta kontakten till WhatsApp/privat direkt."
-]
+)
 
 # ----------------------------
-# 4) Kommun-databas
-#    NYTT: hyresvardar = lista av (namn, url)
-#    Kommuner utan hyresvardar-lista fungerar ändå via bolag/web.
+# 4) Data: kommuner
+#    - hyresvardar: lista av (namn, url, kategori) där kategori = "Kommunal" eller "Privat"
+#    - time är valfri (restid), kan fyllas på senare
 # ----------------------------
 kommuner = {
     "Göteborg": {
-        "bolag": "Bostadsbolaget",
-        "web": "https://bostadsbolaget.se",
+        "lat": 57.70, "lon": 11.97, "dist": "0 km", "time": "0 min",
         "hyresvardar": [
-            ("Bostadsbolaget", "https://bostadsbolaget.se/"),
-            ("Poseidon", "https://poseidon.goteborg.se/"),
-            ("Familjebostäder", "https://familjebostader.se/"),
+            ("Bostadsbolaget", "https://bostadsbolaget.se/", "Kommunal"),
+            ("Poseidon", "https://poseidon.goteborg.se/", "Kommunal"),
+            ("Familjebostäder", "https://familjebostader.se/", "Kommunal"),
         ],
-        "lat": 57.70, "lon": 11.97, "dist": "0 km"
     },
     "Mölndal": {
-        "bolag": "Mölndalsbostäder",
-        "web": "https://www.molndalsbostader.se",
+        "lat": 57.65, "lon": 12.01, "dist": "10 km", "time": "15–25 min",
         "hyresvardar": [
-            ("Mölndalsbostäder", "https://www.molndalsbostader.se/"),
-            ("Wallenstam", "https://www.wallenstam.se/"),
+            ("Mölndalsbostäder", "https://www.molndalsbostader.se/", "Kommunal"),
+            ("Wallenstam", "https://www.wallenstam.se/", "Privat"),
         ],
-        "lat": 57.65, "lon": 12.01, "dist": "10 km"
     },
     "Partille": {
-        "bolag": "Partillebo",
-        "web": "https://www.partillebo.se",
+        "lat": 57.74, "lon": 12.10, "dist": "10 km", "time": "15–25 min",
         "hyresvardar": [
-            ("Partillebo", "https://www.partillebo.se/"),
+            ("Partillebo", "https://www.partillebo.se/", "Kommunal"),
         ],
-        "lat": 57.74, "lon": 12.10, "dist": "10 km"
     },
     "Lerum": {
-        "bolag": "Förbo",
-        "web": FOERBO_INFO_URL,
+        "lat": 57.77, "lon": 12.27, "dist": "20 km", "time": "ca 20–30 min",
         "hyresvardar": [
-            ("Förbo (info)", FOERBO_INFO_URL),
-            ("Förbo – Lediga bostäder (Mina sidor)", FOERBO_LEDIG_URL),
+            ("Förbo (info)", FOERBO_INFO_URL, "Kommunal"),
+            ("Förbo – Lediga bostäder (Mina sidor)", FOERBO_LEDIG_URL, "Kommunal"),
         ],
-        "lat": 57.77, "lon": 12.27, "dist": "20 km"
     },
     "Härryda": {
-        "bolag": "Förbo",
-        "web": FOERBO_INFO_URL,
+        "lat": 57.66, "lon": 12.12, "dist": "20 km", "time": "ca 20–40 min",
         "hyresvardar": [
-            ("Förbo (info)", FOERBO_INFO_URL),
-            ("Förbo – Lediga bostäder (Mina sidor)", FOERBO_LEDIG_URL),
+            ("Förbo (info)", FOERBO_INFO_URL, "Kommunal"),
+            ("Förbo – Lediga bostäder (Mina sidor)", FOERBO_LEDIG_URL, "Kommunal"),
         ],
-        "lat": 57.66, "lon": 12.12, "dist": "20 km"
-    },
-    "Kungälv": {
-        "bolag": "Kungälvsbostäder",
-        "web": "https://www.kungalvsbostader.se",
-        "hyresvardar": [
-            ("Kungälvsbostäder", "https://www.kungalvsbostader.se/"),
-            ("Förbo – Lediga bostäder (Mina sidor)", FOERBO_LEDIG_URL),
-        ],
-        "lat": 57.87, "lon": 11.98, "dist": "20 km"
     },
     "Borås": {
-        "bolag": "Bostäder i Borås",
-        "web": "https://www.bostaderiboras.se/",
+        "lat": 57.72, "lon": 12.94, "dist": "65 km", "time": "ca 55–70 min",
         "hyresvardar": [
-            ("Bostäder i Borås", "https://www.bostaderiboras.se/"),
-            ("Willhem", "https://www.willhem.se/"),
+            ("Bostäder i Borås", "https://www.bostaderiboras.se/", "Kommunal"),
+            ("Willhem", "https://www.willhem.se/", "Privat"),
         ],
-        "lat": 57.72, "lon": 12.94, "dist": "65 km"
     },
 
-    # --- resten av dina kommuner (minst en hyresvärd) ---
-    "Ale": {"bolag": "Alebyggen", "web": "https://www.alebyggen.se", "hyresvardar": [("Alebyggen", "https://www.alebyggen.se/")], "lat": 57.92, "lon": 12.08, "dist": "25 km"},
-    "Alingsås": {"bolag": "Alingsåshem", "web": "https://www.alingsashem.se", "hyresvardar": [("Alingsåshem", "https://www.alingsashem.se/")], "lat": 57.93, "lon": 12.53, "dist": "45 km"},
-    "Bengtsfors": {"bolag": "Bengtsforshus", "web": "https://bengtsforshus.se/", "hyresvardar": [("Bengtsforshus", "https://bengtsforshus.se/")], "lat": 59.03, "lon": 12.22, "dist": "175 km"},
-    "Bollebygd": {"bolag": "Bollebo", "web": "https://www.bollebo.se/", "hyresvardar": [("Bollebo", "https://www.bollebo.se/")], "lat": 57.66, "lon": 12.57, "dist": "40 km"},
-    "Dals-Ed": {"bolag": "Edshus", "web": "https://www.edshus.se", "hyresvardar": [("Edshus", "https://www.edshus.se/")], "lat": 58.91, "lon": 11.92, "dist": "165 km"},
-    "Essunga": {"bolag": "Essungabostäder", "web": "https://www.essungabostader.se", "hyresvardar": [("Essungabostäder", "https://www.essungabostader.se/")], "lat": 58.17, "lon": 12.71, "dist": "85 km"},
-    "Falköping": {"bolag": "Falköpings Hyresbostäder", "web": "https://www.hyresbostader.se", "hyresvardar": [("Falköpings Hyresbostäder", "https://www.hyresbostader.se/")], "lat": 58.17, "lon": 13.55, "dist": "115 km"},
-    "Färgelanda": {"bolag": "Valbohem", "web": "https://www.valbohem.se", "hyresvardar": [("Valbohem", "https://www.valbohem.se/")], "lat": 58.57, "lon": 11.99, "dist": "110 km"},
-    "Grästorp": {"bolag": "Grästorps fastigheter AB", "web": "https://www.grastorp.se/bygga-bo-och-miljo/bo-och-bygga/grastorps-fastigheter-ab.html",
-                 "hyresvardar": [("Grästorps fastigheter AB", "https://www.grastorp.se/bygga-bo-och-miljo/bo-och-bygga/grastorps-fastigheter-ab.html")],
-                 "lat": 58.33, "lon": 12.68, "dist": "100 km"},
-    "Gullspång": {"bolag": "Gullspångsbostäder", "web": "https://www.gullspangsbostader.se", "hyresvardar": [("Gullspångsbostäder", "https://www.gullspangsbostader.se/")], "lat": 58.98, "lon": 14.12, "dist": "210 km"},
-    "Götene": {"bolag": "Götenebostäder", "web": "https://www.gotenebostader.se", "hyresvardar": [("Götenebostäder", "https://www.gotenebostader.se/")], "lat": 58.52, "lon": 13.49, "dist": "150 km"},
-    "Herrljunga": {"bolag": "Herrljungabostäder", "web": "https://www.herbo.se", "hyresvardar": [("Herrljungabostäder", "https://www.herbo.se/")], "lat": 58.07, "lon": 13.02, "dist": "85 km"},
-    "Hjo": {"bolag": "Guldkroksbostäder", "web": "https://www.hjo.se/guldkroksbostader", "hyresvardar": [("Guldkroksbostäder", "https://www.hjo.se/guldkroksbostader")], "lat": 58.30, "lon": 14.28, "dist": "160 km"},
-    "Karlsborg": {"bolag": "Karlsborgsbostäder", "web": "https://www.karlsborgsbostader.se", "hyresvardar": [("Karlsborgsbostäder", "https://www.karlsborgsbostader.se/")], "lat": 58.53, "lon": 14.50, "dist": "200 km"},
-    "Lidköping": {"bolag": "AB Bostäder i Lidköping", "web": "https://www.bostaderlidkoping.se", "hyresvardar": [("AB Bostäder i Lidköping", "https://www.bostaderlidkoping.se/")], "lat": 58.50, "lon": 13.15, "dist": "130 km"},
-    "Lilla Edet": {"bolag": "EdetHus", "web": "https://edethus.se/", "hyresvardar": [("EdetHus", "https://edethus.se/")], "lat": 58.13, "lon": 12.12, "dist": "55 km"},
-    "Lysekil": {"bolag": "LysekilsBostäder", "web": "https://www.lysekilsbostader.se", "hyresvardar": [("LysekilsBostäder", "https://www.lysekilsbostader.se/")], "lat": 58.27, "lon": 11.43, "dist": "110 km"},
-    "Mariestad": {"bolag": "Mariehus", "web": "https://www.mariehus.se", "hyresvardar": [("Mariehus", "https://www.mariehus.se/")], "lat": 58.70, "lon": 13.82, "dist": "175 km"},
-    "Mark": {"bolag": "Marks Bostads AB", "web": "https://www.marksbostadsab.se", "hyresvardar": [("Marks Bostads AB", "https://www.marksbostadsab.se/")], "lat": 57.51, "lon": 12.69, "dist": "60 km"},
-    "Mellerud": {"bolag": "Melleruds Bostäder", "web": "https://www.mellerudsbostader.se", "hyresvardar": [("Melleruds Bostäder", "https://www.mellerudsbostader.se/")], "lat": 58.70, "lon": 12.45, "dist": "125 km"},
-    "Munkedal": {"bolag": "Munkbo", "web": "https://www.munkbo.se", "hyresvardar": [("Munkbo", "https://www.munkbo.se/")], "lat": 58.47, "lon": 11.68, "dist": "110 km"},
-    "Orust": {"bolag": "Orustbostäder", "web": "https://www.orustbostader.se", "hyresvardar": [("Orustbostäder", "https://www.orustbostader.se/")], "lat": 58.21, "lon": 11.70, "dist": "80 km"},
-    "Skara": {"bolag": "Centrumbostäder", "web": "https://www.centrumbostader.se", "hyresvardar": [("Centrumbostäder", "https://www.centrumbostader.se/")], "lat": 58.38, "lon": 13.43, "dist": "130 km"},
-    "Skövde": {"bolag": "Skövdebostäder", "web": "https://www.skovdebostader.se", "hyresvardar": [("Skövdebostäder", "https://www.skovdebostader.se/")], "lat": 58.39, "lon": 13.85, "dist": "150 km"},
-    "Sotenäs": {"bolag": "Sotenäsbostäder", "web": "https://www.sotenasbostader.se", "hyresvardar": [("Sotenäsbostäder", "https://www.sotenasbostader.se/")], "lat": 58.35, "lon": 11.28, "dist": "130 km"},
-    "Stenungsund": {"bolag": "Stenungsundshem", "web": "https://www.stenungsundshem.se", "hyresvardar": [("Stenungsundshem", "https://www.stenungsundshem.se/")], "lat": 58.07, "lon": 11.81, "dist": "50 km"},
-    "Strömstad": {"bolag": "Strömstadsbyggen", "web": "https://www.stromstadsbyggen.se", "hyresvardar": [("Strömstadsbyggen", "https://www.stromstadsbyggen.se/")], "lat": 58.93, "lon": 11.17, "dist": "165 km"},
-    "Svenljunga": {"bolag": "Svenljunga Bostäder", "web": "https://www.svenljungabostader.se", "hyresvardar": [("Svenljunga Bostäder", "https://www.svenljungabostader.se/")], "lat": 57.49, "lon": 13.11, "dist": "95 km"},
-    "Tanum": {"bolag": "Tanums Bostäder", "web": "https://www.tanumsbostader.se", "hyresvardar": [("Tanums Bostäder", "https://www.tanumsbostader.se/")], "lat": 58.72, "lon": 11.32, "dist": "140 km"},
-    "Tibro": {"bolag": "Tibrobyggen", "web": "https://www.tibrobyggen.se", "hyresvardar": [("Tibrobyggen", "https://www.tibrobyggen.se/")], "lat": 58.41, "lon": 14.16, "dist": "170 km"},
-    "Tidaholm": {"bolag": "Tidaholms Bostads AB", "web": "https://www.tidaholmsbostadsab.se", "hyresvardar": [("Tidaholms Bostads AB", "https://www.tidaholmsbostadsab.se/")], "lat": 58.18, "lon": 13.95, "dist": "160 km"},
-    "Tjörn": {"bolag": "Tjörns Bostads AB (TBAB)", "web": "https://www.tjorn.se/webbplatser/tbab", "hyresvardar": [("TBAB", "https://www.tjorn.se/webbplatser/tbab")], "lat": 58.00, "lon": 11.63, "dist": "65 km"},
-    "Tranemo": {"bolag": "Tranemobostäder", "web": "https://www.tranemobostader.se", "hyresvardar": [("Tranemobostäder", "https://www.tranemobostader.se/")], "lat": 57.48, "lon": 13.35, "dist": "100 km"},
-    "Trollhättan": {"bolag": "Eidar", "web": "https://eidar.se", "hyresvardar": [("Eidar", "https://eidar.se/")], "lat": 58.28, "lon": 12.28, "dist": "75 km"},
-    "Töreboda": {"bolag": "Törebodabostäder", "web": "https://www.torebodabostader.se", "hyresvardar": [("Törebodabostäder", "https://www.torebodabostader.se/")], "lat": 58.70, "lon": 14.12, "dist": "185 km"},
-    "Uddevalla": {"bolag": "Uddevallahem", "web": "https://www.uddevallahem.se", "hyresvardar": [("Uddevallahem", "https://www.uddevallahem.se/")], "lat": 58.35, "lon": 11.93, "dist": "90 km"},
-    "Ulricehamn": {"bolag": "Stubo", "web": "https://www.stubo.se", "hyresvardar": [("Stubo", "https://www.stubo.se/")], "lat": 57.79, "lon": 13.41, "dist": "100 km"},
-    "Vara": {"bolag": "Vara Bostäder", "web": "https://www.varabostader.se", "hyresvardar": [("Vara Bostäder", "https://www.varabostader.se/")], "lat": 58.26, "lon": 12.95, "dist": "100 km"},
-    "Vårgårda": {"bolag": "Vårgårda Bostäder", "web": "https://www.vargardabostader.se", "hyresvardar": [("Vårgårda Bostäder", "https://www.vargardabostader.se/")], "lat": 58.03, "lon": 12.80, "dist": "65 km"},
-    "Vänersborg": {"bolag": "Vänersborgsbostäder", "web": "https://www.vanersborgsbostader.se", "hyresvardar": [("Vänersborgsbostäder", "https://www.vanersborgsbostader.se/")], "lat": 58.37, "lon": 12.32, "dist": "85 km"},
-    "Åmål": {"bolag": "Åmåls Kommunfastigheter (ÅKAB)", "web": "https://akab.amal.se/", "hyresvardar": [("ÅKAB", "https://akab.amal.se/")], "lat": 59.05, "lon": 12.70, "dist": "175 km"},
-    "Öckerö": {"bolag": "Öckerö Fastigheter", "web": "https://www.ockerofastigheter.se/", "hyresvardar": [("Öckerö Fastigheter", "https://www.ockerofastigheter.se/")], "lat": 57.71, "lon": 11.64, "dist": "25 km"},
+    # --- Resterande (minst 1 hyresvärd per kommun) ---
+    "Ale": {"lat": 57.92, "lon": 12.08, "dist": "25 km", "hyresvardar": [("Alebyggen", "https://www.alebyggen.se/", "Kommunal")]},
+    "Alingsås": {"lat": 57.93, "lon": 12.53, "dist": "45 km", "hyresvardar": [("Alingsåshem", "https://www.alingsashem.se/", "Kommunal")]},
+    "Bengtsfors": {"lat": 59.03, "lon": 12.22, "dist": "175 km", "hyresvardar": [("Bengtsforshus", "https://bengtsforshus.se/", "Kommunal")]},
+    "Bollebygd": {"lat": 57.66, "lon": 12.57, "dist": "40 km", "hyresvardar": [("Bollebo", "https://www.bollebo.se/", "Kommunal")]},
+    "Dals-Ed": {"lat": 58.91, "lon": 11.92, "dist": "165 km", "hyresvardar": [("Edshus", "https://www.edshus.se/", "Kommunal")]},
+    "Essunga": {"lat": 58.17, "lon": 12.71, "dist": "85 km", "hyresvardar": [("Essungabostäder", "https://www.essungabostader.se/", "Kommunal")]},
+    "Falköping": {"lat": 58.17, "lon": 13.55, "dist": "115 km", "hyresvardar": [("Falköpings Hyresbostäder", "https://www.hyresbostader.se/", "Kommunal")]},
+    "Färgelanda": {"lat": 58.57, "lon": 11.99, "dist": "110 km", "hyresvardar": [("Valbohem", "https://www.valbohem.se/", "Kommunal")]},
+    "Grästorp": {"lat": 58.33, "lon": 12.68, "dist": "100 km", "hyresvardar": [("Grästorps fastigheter AB", "https://www.grastorp.se/bygga-bo-och-miljo/bo-och-bygga/grastorps-fastigheter-ab.html", "Kommunal")]},
+    "Gullspång": {"lat": 58.98, "lon": 14.12, "dist": "210 km", "hyresvardar": [("Gullspångsbostäder", "https://www.gullspangsbostader.se/", "Kommunal")]},
+    "Götene": {"lat": 58.52, "lon": 13.49, "dist": "150 km", "hyresvardar": [("Götenebostäder", "https://www.gotenebostader.se/", "Kommunal")]},
+    "Herrljunga": {"lat": 58.07, "lon": 13.02, "dist": "85 km", "hyresvardar": [("Herrljungabostäder", "https://www.herbo.se/", "Kommunal")]},
+    "Hjo": {"lat": 58.30, "lon": 14.28, "dist": "160 km", "hyresvardar": [("Guldkroksbostäder", "https://www.hjo.se/guldkroksbostader", "Kommunal")]},
+    "Karlsborg": {"lat": 58.53, "lon": 14.50, "dist": "200 km", "hyresvardar": [("Karlsborgsbostäder", "https://www.karlsborgsbostader.se/", "Kommunal")]},
+    "Kungälv": {"lat": 57.87, "lon": 11.98, "dist": "20 km", "hyresvardar": [("Kungälvsbostäder", "https://www.kungalvsbostader.se/", "Kommunal")]},
+    "Lidköping": {"lat": 58.50, "lon": 13.15, "dist": "130 km", "hyresvardar": [("AB Bostäder i Lidköping", "https://www.bostaderlidkoping.se/", "Kommunal")]},
+    "Lilla Edet": {"lat": 58.13, "lon": 12.12, "dist": "55 km", "hyresvardar": [("EdetHus", "https://edethus.se/", "Kommunal")]},
+    "Lysekil": {"lat": 58.27, "lon": 11.43, "dist": "110 km", "hyresvardar": [("LysekilsBostäder", "https://www.lysekilsbostader.se/", "Kommunal")]},
+    "Mariestad": {"lat": 58.70, "lon": 13.82, "dist": "175 km", "hyresvardar": [("Mariehus", "https://www.mariehus.se/", "Kommunal")]},
+    "Mark": {"lat": 57.51, "lon": 12.69, "dist": "60 km", "hyresvardar": [("Marks Bostads AB", "https://www.marksbostadsab.se/", "Kommunal")]},
+    "Mellerud": {"lat": 58.70, "lon": 12.45, "dist": "125 km", "hyresvardar": [("Melleruds Bostäder", "https://www.mellerudsbostader.se/", "Kommunal")]},
+    "Munkedal": {"lat": 58.47, "lon": 11.68, "dist": "110 km", "hyresvardar": [("Munkbo", "https://www.munkbo.se/", "Kommunal")]},
+    "Orust": {"lat": 58.21, "lon": 11.70, "dist": "80 km", "hyresvardar": [("Orustbostäder", "https://www.orustbostader.se/", "Kommunal")]},
+    "Skara": {"lat": 58.38, "lon": 13.43, "dist": "130 km", "hyresvardar": [("Centrumbostäder", "https://www.centrumbostader.se/", "Kommunal")]},
+    "Skövde": {"lat": 58.39, "lon": 13.85, "dist": "150 km", "hyresvardar": [("Skövdebostäder", "https://www.skovdebostader.se/", "Kommunal")]},
+    "Sotenäs": {"lat": 58.35, "lon": 11.28, "dist": "130 km", "hyresvardar": [("Sotenäsbostäder", "https://www.sotenasbostader.se/", "Kommunal")]},
+    "Stenungsund": {"lat": 58.07, "lon": 11.81, "dist": "50 km", "hyresvardar": [("Stenungsundshem", "https://www.stenungsundshem.se/", "Kommunal")]},
+    "Strömstad": {"lat": 58.93, "lon": 11.17, "dist": "165 km", "hyresvardar": [("Strömstadsbyggen", "https://www.stromstadsbyggen.se/", "Kommunal")]},
+    "Svenljunga": {"lat": 57.49, "lon": 13.11, "dist": "95 km", "hyresvardar": [("Svenljunga Bostäder", "https://www.svenljungabostader.se/", "Kommunal")]},
+    "Tanum": {"lat": 58.72, "lon": 11.32, "dist": "140 km", "hyresvardar": [("Tanums Bostäder", "https://www.tanumsbostader.se/", "Kommunal")]},
+    "Tibro": {"lat": 58.41, "lon": 14.16, "dist": "170 km", "hyresvardar": [("Tibrobyggen", "https://www.tibrobyggen.se/", "Kommunal")]},
+    "Tidaholm": {"lat": 58.18, "lon": 13.95, "dist": "160 km", "hyresvardar": [("Tidaholms Bostads AB", "https://www.tidaholmsbostadsab.se/", "Kommunal")]},
+    "Tjörn": {"lat": 58.00, "lon": 11.63, "dist": "65 km", "hyresvardar": [("TBAB", "https://www.tjorn.se/webbplatser/tbab", "Kommunal")]},
+    "Tranemo": {"lat": 57.48, "lon": 13.35, "dist": "100 km", "hyresvardar": [("Tranemobostäder", "https://www.tranemobostader.se/", "Kommunal")]},
+    "Trollhättan": {"lat": 58.28, "lon": 12.28, "dist": "75 km", "hyresvardar": [("Eidar", "https://eidar.se/", "Kommunal")]},
+    "Töreboda": {"lat": 58.70, "lon": 14.12, "dist": "185 km", "hyresvardar": [("Törebodabostäder", "https://www.torebodabostader.se/", "Kommunal")]},
+    "Uddevalla": {"lat": 58.35, "lon": 11.93, "dist": "90 km", "hyresvardar": [("Uddevallahem", "https://www.uddevallahem.se/", "Kommunal")]},
+    "Ulricehamn": {"lat": 57.79, "lon": 13.41, "dist": "100 km", "hyresvardar": [("Stubo", "https://www.stubo.se/", "Kommunal")]},
+    "Vara": {"lat": 58.26, "lon": 12.95, "dist": "100 km", "hyresvardar": [("Vara Bostäder", "https://www.varabostader.se/", "Kommunal")]},
+    "Vårgårda": {"lat": 58.03, "lon": 12.80, "dist": "65 km", "hyresvardar": [("Vårgårda Bostäder", "https://www.vargardabostader.se/", "Kommunal")]},
+    "Vänersborg": {"lat": 58.37, "lon": 12.32, "dist": "85 km", "hyresvardar": [("Vänersborgsbostäder", "https://www.vanersborgsbostader.se/", "Kommunal")]},
+    "Åmål": {"lat": 59.05, "lon": 12.70, "dist": "175 km", "hyresvardar": [("ÅKAB", "https://akab.amal.se/", "Kommunal")]},
+    "Öckerö": {"lat": 57.71, "lon": 11.64, "dist": "25 km", "hyresvardar": [("Öckerö Fastigheter", "https://www.ockerofastigheter.se/", "Kommunal")]},
 }
 
 # ----------------------------
-# 5) Session state + Rensa
+# 5) Kommunväljare med SÖKFUNKTION + Rensa
 # ----------------------------
 if "city_selector" not in st.session_state:
     st.session_state["city_selector"] = ""
+
+search_text = st.text_input("Sök kommun (skriv några bokstäver):", value="")
 
 def reset_city():
     st.session_state["city_selector"] = ""
 
 col_sel, col_btn = st.columns([4, 1])
 
+all_kommuner = sorted(list(kommuner.keys()))
+if search_text.strip():
+    filtered = [k for k in all_kommuner if search_text.lower() in k.lower()]
+else:
+    filtered = all_kommuner
+
 with col_sel:
-    options = [""] + sorted(list(kommuner.keys()))
+    options = [""] + filtered
     selected_city = st.selectbox(
         "Välj kommun:",
         options,
@@ -275,66 +262,79 @@ if selected_city:
     d = kommuner[selected_city]
     kommun_namn = official_kommun_name(selected_city)
 
-    # --- Bostadskort / Hyresvärdar ---
-    st.markdown(
-        f'<div class="card"><div class="section-header">🏢 {selected_city} - Hyresvärdar</div>',
-        unsafe_allow_html=True
-    )
+    # ---------- Hyresvärdar ----------
+    with st.container(border=True):
+        st.subheader(f"🏢 {selected_city} – Hyresvärdar")
+        st.write("Här är hyresvärdar i kommunen:")
 
-    hyresvardar = d.get("hyresvardar", [])
+        grupper = {"Kommunal": [], "Privat": [], "Övrigt": []}
+        for item in d.get("hyresvardar", []):
+            if len(item) == 3:
+                name, url, cat = item
+                cat = cat if cat in ("Kommunal", "Privat") else "Övrigt"
+            else:
+                name, url = item[0], item[1]
+                cat = "Övrigt"
+            grupper[cat].append((name, url))
 
-    # Fallback: om någon kommun bara har bolag/web
-    if not hyresvardar and d.get("bolag") and d.get("web"):
-        hyresvardar = [(d["bolag"], d["web"])]
+        if grupper["Kommunal"]:
+            st.markdown("**Kommunal**")
+            for name, url in grupper["Kommunal"]:
+                st.markdown(f"🔗 **[{name}]({url})**")
 
-    st.write("Här är hyresvärdar i kommunen:")
-    for name, url in hyresvardar:
-        st.markdown(f"🔗 **[{name}]({url})**")
+        if grupper["Privat"]:
+            st.markdown("**Privat**")
+            for name, url in grupper["Privat"]:
+                st.markdown(f"🔗 **[{name}]({url})**")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+        if grupper["Övrigt"]:
+            st.markdown("**Övrigt**")
+            for name, url in grupper["Övrigt"]:
+                st.markdown(f"🔗 **[{name}]({url})**")
 
-    # --- Portaler ---
-    st.markdown(
-        f'<div class="card"><div class="section-header">🔎 Sök lediga annonser</div>',
-        unsafe_allow_html=True
-    )
+        # AUTOMATISK Google-knapp om listan är liten (≤ 1)
+        if len(d.get("hyresvardar", [])) <= 1:
+            st.divider()
+            st.caption("Hittar du inte fler hyresvärdar?")
+            link_btn(f"🔎 Sök hyresvärdar i {selected_city} på Google", google_hyresvardar_url(selected_city))
 
-    c1, c2, c3 = st.columns(3)
+    # ---------- Portaler ----------
+    with st.container(border=True):
+        st.subheader("🔎 Sök lediga annonser")
+        c1, c2, c3 = st.columns(3)
 
-    with c1:
-        link_btn("HomeQ (kommun)", homeq_kommun_url(selected_city))
+        with c1:
+            link_btn("HomeQ (kommun)", homeq_kommun_url(selected_city))
 
-    with c2:
-        if selected_city in BOPLATS_KOMMUNER:
-            link_btn("Boplats (välj kommun i filter)", BOPLATS_FILTER_URL)
-        else:
-            st.markdown("**Boplats**: ej i deras kommun-lista")
+        with c2:
+            if selected_city in BOPLATS_KOMMUNER:
+                link_btn("Boplats (välj kommun i filter)", BOPLATS_FILTER_URL)
+            else:
+                st.caption("Boplats: ej i deras kommun-lista")
 
-    with c3:
-        link_btn("Qasa (kommun)", qasa_kommun_url(selected_city))
+        with c3:
+            link_btn("Qasa (kommun)", qasa_kommun_url(selected_city))
 
-    # Qasa-info (som du bad om)
-    st.info("\n\n".join(QASA_INFO_TEXT))
+        with st.expander("Säkerhetstips (Qasa och privata annonser)", expanded=False):
+            st.info(QASA_INFO_TEXT)
 
-    st.caption(f"Sökningarna ovan är satta på **{kommun_namn}** (HomeQ/Qasa).")
-    st.markdown("</div>", unsafe_allow_html=True)
+        st.caption(f"Sökningarna ovan är satta på **{kommun_namn}** (HomeQ/Qasa).")
 
-    # --- Karta & läge ---
-    st.markdown(
-        f'<div class="card"><div class="section-header">📍 Karta & Läge</div>',
-        unsafe_allow_html=True
-    )
-    st.write(f"Avstånd till Göteborg C: **{d['dist']}**")
+    # ---------- Pendling & Karta ----------
+    with st.container(border=True):
+        st.subheader("📍 Pendling & Karta")
+        st.write(f"Avstånd till Göteborg C: **{d.get('dist', '—')}**")
+        if d.get("time"):
+            st.write(f"Restid (cirka): **{d['time']}**")
 
-    map_df = pd.DataFrame({"lat": [d["lat"]], "lon": [d["lon"]]})
-    map_safe(map_df, zoom=9)
+        with st.expander("Visa karta", expanded=False):
+            map_df = pd.DataFrame({"lat": [d["lat"]], "lon": [d["lon"]]})
+            map_safe(map_df, zoom=9)
 
-    link_btn("Visa vägbeskrivning på Google Maps 🗺️", google_maps_station_url(selected_city))
-    st.markdown("</div>", unsafe_allow_html=True)
+        link_btn("Visa vägbeskrivning på Google Maps 🗺️", google_maps_station_url(selected_city))
 
 else:
     st.info("Välj en kommun för att se hyresvärdar, portal-länkar och pendlingsinformation.")
 
-# Sidfot
 st.markdown("---")
 st.caption("© 2026 Västrabo | Enheten för mottagande och integration i Lerums kommun")
