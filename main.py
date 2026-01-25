@@ -32,7 +32,7 @@ st.markdown(
 )
 
 st.markdown('<div class="app-title">Söka bostad i Västra Götland</div>', unsafe_allow_html=True)
-st.markdown('<div class="app-subtitle">Sök bostad i VG (Västra Götaland)</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-subtitle">Enheten för Mottagande och Integration</div>', unsafe_allow_html=True)
 st.markdown('<div class="divider-line"></div>', unsafe_allow_html=True)
 
 # ----------------------------
@@ -470,5 +470,6 @@ else:
 
 st.divider()
 st.caption("© 2026 Västrabo | Enheten för mottagande och integration i Lerums kommun")
+
 
 
